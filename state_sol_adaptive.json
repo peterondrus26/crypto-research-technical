@@ -1,0 +1,19 @@
+{
+  "initialized": true,
+  "base_usd": 30.0,
+  "base_asset": 0.16310711365494687,
+  "usd": 30.0,
+  "asset": 0.16310711365494687,
+  "entry": null,
+  "tp": null,
+  "sl": null,
+  "cooldown": 0,
+  "position_type": null,
+  "bars_in_trade": 0,
+  "daily_trades": 0,
+  "daily_pnl": 0,
+  "consecutive_losses": 0,
+  "last_reset_date": "2026-09-27",
+  "trades_today": [],
+  "position_size": 0.0
+}
