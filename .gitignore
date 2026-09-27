@@ -1,0 +1,25 @@
+# Byte-compiled Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment
+.venv/
+venv/
+
+# Live trading state and logs (regenerated at runtime)
+state_*.json
+performance_*.csv
+parameters_*.csv
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+
+# Backtest outputs (will be regenerated)
+backtest_results.csv
+data/*.csv
+
+# But keep sample data if we add any later
+!data/.gitkeep
