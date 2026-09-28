@@ -1,7 +1,7 @@
 """
 core/data_loader.py — Fetch and cache OHLCV data.
 
-Data is cached at data/{PAIR}_{TIMEFRAME}_{DAYS}d.csv.
+Data is cached at data/{PAIR}_{TIMEFRAME}_{DAYS}d[_tag].csv.
 If the file exists, we load it; otherwise we download from Binance via CCXT.
 """
 
@@ -23,18 +23,28 @@ CANDLE_SECONDS = {
 }
 
 
-def data_path(pair: str, timeframe: str, days: int) -> str:
-    """Return the cache file path for a given (pair, tf, days)."""
+def data_path(pair: str, timeframe: str, days: int, tag: str = "") -> str:
+    """
+    Return the cache file path for a given (pair, tf, days, tag).
+    `tag` lets us cache alternative windows (e.g., 'oos') without
+    colliding with the default files.
+    """
     safe_pair = pair.replace("/", "")
-    return os.path.join(DATA_DIR, f"{safe_pair}_{timeframe}_{days}d.csv")
+    suffix = f"_{tag}" if tag else ""
+    return os.path.join(DATA_DIR, f"{safe_pair}_{timeframe}_{days}d{suffix}.csv")
 
 
 def download(
-    pair: str, timeframe: str, days: int, exchange_name: str = "binance"
+    pair: str,
+    timeframe: str,
+    days: int,
+    exchange_name: str = "binance",
+    end_dt_utc: datetime | None = None,
 ) -> pd.DataFrame:
     """
     Download `days` of OHLCV from the exchange, paginating as needed.
-    Returns a DataFrame with columns: time, open, high, low, close, volume.
+    If end_dt_utc is provided, downloads the window ending at that time
+    instead of "now". Returns DataFrame: time, open, high, low, close, volume.
     """
     if timeframe not in CANDLE_SECONDS:
         raise ValueError(f"Unknown timeframe: {timeframe}")
@@ -42,14 +52,18 @@ def download(
     candle_sec = CANDLE_SECONDS[timeframe]
     exchange = getattr(ccxt, exchange_name)({"enableRateLimit": True})
 
-    end_dt = datetime.now(timezone.utc).replace(second=0, microsecond=0)
+    if end_dt_utc is None:
+        end_dt = datetime.now(timezone.utc).replace(second=0, microsecond=0)
+    else:
+        end_dt = end_dt_utc
     start_dt = end_dt - timedelta(days=days)
+
     since_ms = int(start_dt.timestamp() * 1000)
     end_ms = int(end_dt.timestamp() * 1000)
 
     print(
         f"[DOWNLOAD] {pair} {timeframe} for {days} days "
-        f"({start_dt.date()} → {end_dt.date()})"
+        f"({start_dt.date()} -> {end_dt.date()})"
     )
 
     all_rows = []
@@ -104,20 +118,26 @@ def download(
 
 
 def load_or_fetch(
-    pair: str, timeframe: str, days: int, force_download: bool = False
+    pair: str,
+    timeframe: str,
+    days: int,
+    force_download: bool = False,
+    end_dt_utc: datetime | None = None,
+    tag: str = "",
 ) -> pd.DataFrame:
     """
     Return OHLCV dataframe. Uses cache if available unless force_download=True.
+    If end_dt_utc or tag provided, uses a distinct cache file.
     """
     os.makedirs(DATA_DIR, exist_ok=True)
-    path = data_path(pair, timeframe, days)
+    path = data_path(pair, timeframe, days, tag=tag)
 
     if os.path.exists(path) and not force_download:
         df = pd.read_csv(path, parse_dates=["time"])
         print(f"[CACHE] Loaded {len(df)} candles from {path}")
         return df
 
-    df = download(pair, timeframe, days)
+    df = download(pair, timeframe, days, end_dt_utc=end_dt_utc)
     df.to_csv(path, index=False)
     print(f"[SAVE] Wrote {len(df)} candles to {path}")
     return df

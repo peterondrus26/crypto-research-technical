@@ -5,6 +5,7 @@ Usage:
     python batch.py --strategy breakout --pairs SOL/USDT,BTC/USDT,ETH/USDT \
                     --timeframes 5m,1h --days 30
 """
+
 import argparse
 import itertools
 import sys
@@ -18,14 +19,17 @@ import registry
 from core.data_loader import load_or_fetch
 from core.backtest_engine import run, prepare_dataframe
 
-
 DEFAULT_PAIRS = ["SOL/USDT", "BTC/USDT", "ETH/USDT", "BNB/USDT", "XRP/USDT"]
 DEFAULT_TIMEFRAMES = ["5m", "1h"]
 
 
-def run_batch(strategy_name: str, pairs: list[str],
-              timeframes: list[str], days_map: dict[str, int],
-              config_path: str):
+def run_batch(
+    strategy_name: str,
+    pairs: list[str],
+    timeframes: list[str],
+    days_map: dict[str, int],
+    config_path: str,
+):
     load_config(config_path)
     strategy_cls = registry.get_strategy_class(strategy_name)
 
@@ -47,8 +51,13 @@ def run_batch(strategy_name: str, pairs: list[str],
             s = result.summary
 
             if not s:
-                row = {"pair": pair, "tf": tf, "trades": 0,
-                       "strategy_return": 0.0, "note": "no trades"}
+                row = {
+                    "pair": pair,
+                    "tf": tf,
+                    "trades": 0,
+                    "strategy_return": 0.0,
+                    "note": "no trades",
+                }
             else:
                 row = {
                     "pair": pair,
@@ -66,15 +75,18 @@ def run_batch(strategy_name: str, pairs: list[str],
                 }
             results.append(row)
 
-            status = (f"trades={row.get('trades', 0):3d}  "
-                      f"ret={row.get('strategy_return', 0):+6.2f}%  "
-                      f"dd={row.get('max_dd', 0):+6.2f}%")
+            status = (
+                f"trades={row.get('trades', 0):3d}  "
+                f"ret={row.get('strategy_return', 0):+6.2f}%  "
+                f"dd={row.get('max_dd', 0):+6.2f}%"
+            )
             print(f"  [{i:2d}/{len(combos)}] {pair:10s} {tf:4s}  {status}")
 
         except Exception as e:
             print(f"  [{i:2d}/{len(combos)}] {pair:10s} {tf:4s}  ERROR: {e}")
-            results.append({"pair": pair, "tf": tf,
-                            "strategy_return": None, "note": str(e)})
+            results.append(
+                {"pair": pair, "tf": tf, "strategy_return": None, "note": str(e)}
+            )
 
     elapsed = time.time() - t0
     df_res = pd.DataFrame(results)
@@ -93,8 +105,7 @@ def run_batch(strategy_name: str, pairs: list[str],
     print("=" * 90)
     print(f"  BATCH RESULTS — {strategy_name}")
     print("=" * 90)
-    print(valid.sort_values("strategy_return", ascending=False)
-              .to_string(index=False))
+    print(valid.sort_values("strategy_return", ascending=False).to_string(index=False))
     print()
 
     n_pos = (valid["strategy_return"] > 0).sum()
