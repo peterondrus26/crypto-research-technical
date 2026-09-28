@@ -1,3 +1,7 @@
+# BASELINE — Original RSI/EMA strategy.
+# 30-day backtest: -17.81%, 136 trades, WR 32.4%, max DD -19.30%
+# Grid search over 1296 combos: best was -8.20% (still losing)
+# Conclusion: signal has no edge as designed.
 strategy: rsi_ema
 
 # Strategy parameters (override defaults from strategies/rsi_ema.py)
