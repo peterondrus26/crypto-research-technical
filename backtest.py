@@ -41,20 +41,36 @@ def make_initial_state(price: float) -> dict:
 
 # ----------------------------------------------------------------------
 def _open_long(state, price, atr, tp_mult, sl_mult):
+    """Legacy entry: computes tp/sl from ATR multipliers."""
+    tp = price + atr * tp_mult
+    sl = price - atr * sl_mult
+    _open_long_levels(state, price, tp, sl)
+
+
+def _open_long_levels(state, price, tp, sl):
+    """Entry with explicit tp/sl levels (tp may be None)."""
     size = state["usd"] * 0.95
     fee = size * config.TRADING_FEE
     qty = (size - fee) / price
     state["usd"] -= size
     state["asset"] += qty
     state["entry"] = price
-    state["tp"] = price + atr * tp_mult
-    state["sl"] = price - atr * sl_mult
+    state["tp"] = tp
+    state["sl"] = sl
     state["position_type"] = "LONG"
     state["position_size"] = qty
     state["bars_in_trade"] = 0
 
 
 def _open_short(state, price, atr, tp_mult, sl_mult):
+    """Legacy entry: computes tp/sl from ATR multipliers."""
+    tp = price - atr * tp_mult
+    sl = price + atr * sl_mult
+    _open_short_levels(state, price, tp, sl)
+
+
+def _open_short_levels(state, price, tp, sl):
+    """Entry with explicit tp/sl levels (tp may be None)."""
     qty = state["asset"] * 0.50
     gross = qty * price
     fee = gross * config.TRADING_FEE
@@ -62,8 +78,8 @@ def _open_short(state, price, atr, tp_mult, sl_mult):
     state["asset"] -= qty
     state["usd"] += net
     state["entry"] = price
-    state["tp"] = price - atr * tp_mult
-    state["sl"] = price + atr * sl_mult
+    state["tp"] = tp
+    state["sl"] = sl
     state["position_type"] = "SHORT"
     state["position_size"] = qty
     state["bars_in_trade"] = 0
@@ -157,19 +173,36 @@ def run_backtest(df: pd.DataFrame, strategy) -> dict:
         # Strategy hooks
         strategy.pre_bar(state, row, context)
 
-        # Try entry
+                   # Try entry
         if state["position_type"] is None:
             d = strategy.check_entry(state, row, context)
+
             if d.action == "OPEN_LONG":
                 state["last_entry"] = price
-                _open_long(state, price, float(row["atr"]),
-                           strategy.params.get("tp_mult", config.ATR_TP),
-                           strategy.params.get("sl_mult", config.ATR_SL))
+                if strategy.uses_runner_tp_sl:
+                    tp, sl = strategy.get_entry_levels(
+                        price, float(row["atr"]), row)
+                    _open_long_levels(state, price, tp, sl)
+                else:
+                    # Strategy manages exits internally; provide SL safety net
+                    sl_mult = strategy.params.get("sl_atr_mult", 2.0)
+                    sl = price - float(row["atr"]) * sl_mult
+                    _open_long_levels(state, price, None, sl)
+
             elif d.action == "OPEN_SHORT":
                 state["last_entry"] = price
-                _open_short(state, price, float(row["atr"]),
-                            strategy.params.get("tp_mult", config.ATR_TP),
-                            strategy.params.get("sl_mult", config.ATR_SL))
+                if strategy.uses_runner_tp_sl:
+                    tp, sl = strategy.get_entry_levels(
+                        price, float(row["atr"]), row)
+                    # Flip for shorts: TP is below, SL is above
+                    tp = price - (tp - price)
+                    sl = price + (price - sl)
+                    _open_short_levels(state, price, tp, sl)
+                else:
+                    # Strategy manages exits internally; provide SL safety net
+                    sl_mult = strategy.params.get("sl_atr_mult", 2.0)
+                    sl = price + float(row["atr"]) * sl_mult
+                    _open_short_levels(state, price, None, sl)
 
         # Try exit
         if state["position_type"] is not None:

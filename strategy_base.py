@@ -35,6 +35,11 @@ class StrategyBase:
     name: str = "unnamed"
     description: str = ""
     default_params: dict[str, Any] = {}
+    # Whether the runner manages TP/SL levels (True) or the strategy
+    # handles exits internally via check_exit (False).
+    # RSI/EMA strategy uses runner-managed levels (backward compat).
+    # Mean reversion manages its own exits.
+    uses_runner_tp_sl: bool = True
 
     def __init__(self, params: dict[str, Any] | None = None):
         """
@@ -51,7 +56,15 @@ class StrategyBase:
                     )
                 merged[k] = v
         self.params = merged
-
+    def get_entry_levels(self, price: float, atr: float, row: pd.Series):
+        """
+        Return (tp, sl) levels for a new position.
+        Only called if uses_runner_tp_sl is True.
+        Default: 3×ATR TP, 1.4×ATR SL. Override in subclass for custom levels.
+        """
+        tp_mult = self.params.get("tp_mult", 3.0)
+        sl_mult = self.params.get("sl_mult", 1.4)
+        return (price + atr * tp_mult, price - atr * sl_mult)
     # ---- to be overridden by subclasses ----
     def check_entry(self, state: dict, row: pd.Series,
                     context: dict) -> Decision:

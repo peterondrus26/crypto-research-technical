@@ -1,0 +1,32 @@
+strategy: meanrev
+
+params:
+  z_entry: 2.0
+  rsi_entry: 30
+  rsi_exit: 55
+  max_bars: 12
+  sl_atr_mult: 2.0
+
+market:
+  pair: SOL
+  kraken_pair: SOLUSD
+  interval: "5"
+  data_file: data/solusdt_5m_30d.csv
+
+account:
+  start_balance: 50.0
+  initial_asset_allocation: 0.40
+  trading_fee: 0.0026
+
+volatility:
+  atr_percentile: 60
+  atr_lookback_periods: 50
+  atr_min: 0.0015
+
+safety:
+  max_daily_loss: -2.0
+  max_consecutive_losses: 5
+  daily_max_trades: 25
+
+adaptive:
+  enabled: false

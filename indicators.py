@@ -58,4 +58,7 @@ def enrich(df: pd.DataFrame,
     df["rsi"]       = rsi(df["close"])
     df["atr"]       = atr(df)
     df["atrr"]      = df["atr"] / df["close"]
+    df["ema20"]    = df["close"].ewm(span=20).mean()
+    df["stddev20"] = df["close"].rolling(20).std()
+    df["zscore20"] = (df["close"] - df["ema20"]) / df["stddev20"]
     return df

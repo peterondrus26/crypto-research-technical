@@ -9,12 +9,13 @@ Then it's available everywhere: backtest, live, menu, grid_search.
 """
 from strategy_base import StrategyBase
 from strategies.rsi_ema import RSIEMAStrategy
+from strategies.meanrev import MeanRevStrategy
 
 
 _REGISTRY: dict[str, type[StrategyBase]] = {
     "rsi_ema": RSIEMAStrategy,
+    "meanrev": MeanRevStrategy,
     # future strategies register here:
-    # "meanrev": MeanRevStrategy,
     # "breakout": BreakoutStrategy,
 }
 
