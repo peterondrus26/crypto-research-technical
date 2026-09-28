@@ -118,7 +118,7 @@ def main():
     config_path = args.config or f"config/{args.strategy}.yaml"
 
     # Days per timeframe: keep candle count reasonable
-    days_map = {"5m": 30, "15m": 60, "1h": 90, "4h": 180, "1d": 365}
+    days_map = {"5m": 30, "15m": 60, "1h": 180, "4h": 180, "1d": 365}
 
     run_batch(args.strategy, pairs, timeframes, days_map, config_path)
 
