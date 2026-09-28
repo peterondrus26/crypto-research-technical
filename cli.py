@@ -56,7 +56,10 @@ def cmd_run(args):
     print(f"  Win rate:       {s['win_rate']:.1f}%  "
           f"({s['wins']}W / {s['losses']}L)")
     print(f"  Total PnL:      ${s['total_pnl']:.2f}")
-    print(f"  Return:         {s['total_return']:+.2f}%")
+    print(f"  Equity Return:  {s['total_return']:+.2f}%   "
+          f"(includes market drift)")
+    print(f"  Strategy Return:{s['strategy_return']:+.2f}%   "
+          f"(trading edge only)")
     print(f"  Max Drawdown:   {s['max_drawdown']:.2f}%")
     print(f"  R:R Ratio:      {s['rr_ratio']:.2f}")
     print(f"  Exits:          TP:{s['tp_exits']}  SL:{s['sl_exits']}  "

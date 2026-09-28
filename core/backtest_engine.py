@@ -214,15 +214,20 @@ def summarize(result: BacktestResult) -> dict:
     avg_l = losses["pnl"].mean() if len(losses) else 0.0
     rr = abs(avg_w / avg_l) if avg_l else 0.0
 
+    total_return_pct = (final_val - config.START_BALANCE) / config.START_BALANCE * 100
+    strategy_pnl = float(t["pnl"].sum())
+    strategy_return_pct = strategy_pnl / config.START_BALANCE * 100
+
     return {
         "total_trades": len(t),
         "wins": len(wins),
         "losses": len(losses),
         "win_rate": len(wins) / len(t) * 100,
-        "total_pnl": t["pnl"].sum(),
+        "total_pnl": strategy_pnl,
         "final_equity": final_val,
-        "total_return": (final_val - config.START_BALANCE)
-                        / config.START_BALANCE * 100,
+        # Two return metrics side by side:
+        "total_return": total_return_pct,          # includes market drift
+        "strategy_return": strategy_return_pct,    # PnL only, honest edge
         "avg_win": avg_w,
         "avg_loss": avg_l,
         "rr_ratio": rr,
@@ -236,7 +241,6 @@ def summarize(result: BacktestResult) -> dict:
         "rsi_exits": len(t[t["exit_reason"] == "RSI"]),
         "time_exits": len(t[t["exit_reason"] == "TIME"]),
     }
-
 
 def prepare_dataframe(df_raw: pd.DataFrame) -> pd.DataFrame:
     """Enrich and clean a raw OHLCV dataframe."""
