@@ -8,6 +8,7 @@ Usage:
     python oos_test.py --strategy breakout
     python oos_test.py --strategy breakout --end-date 2026-03-31
 """
+
 import argparse
 import itertools
 import time
@@ -21,7 +22,6 @@ import registry
 from core.data_loader import load_or_fetch
 from core.backtest_engine import run, prepare_dataframe
 
-
 DEFAULT_PAIRS = ["SOL/USDT", "BTC/USDT", "ETH/USDT", "BNB/USDT", "XRP/USDT"]
 
 
@@ -31,17 +31,23 @@ def parse_date(s: str) -> datetime:
     return d
 
 
-def run_oos(strategy_name: str, pairs: list[str],
-            timeframe: str, days: int,
-            end_date: str, config_path: str):
+def run_oos(
+    strategy_name: str,
+    pairs: list[str],
+    timeframe: str,
+    days: int,
+    end_date: str,
+    config_path: str,
+):
     load_config(config_path)
     end_dt = parse_date(end_date)
     print(f"[OOS] Strategy:     {strategy_name}")
     print(f"[OOS] Pairs:        {pairs}")
     print(f"[OOS] Timeframe:    {timeframe}  ({days} days)")
     print(f"[OOS] End date:     {end_dt.date()}")
-    start_dt = end_dt.replace(hour=0, minute=0, second=0) - \
-        __import__("datetime").timedelta(days=days)
+    start_dt = end_dt.replace(hour=0, minute=0, second=0) - __import__(
+        "datetime"
+    ).timedelta(days=days)
     print(f"[OOS] Actual range: {start_dt.date()} → {end_dt.date()}\n")
 
     strategy_cls = registry.get_strategy_class(strategy_name)
@@ -51,7 +57,9 @@ def run_oos(strategy_name: str, pairs: list[str],
     for i, pair in enumerate(pairs, 1):
         try:
             df_raw = load_or_fetch(
-                pair, timeframe, days,
+                pair,
+                timeframe,
+                days,
                 force_download=False,
                 end_dt_utc=end_dt,
                 tag="oos",
@@ -64,8 +72,13 @@ def run_oos(strategy_name: str, pairs: list[str],
             s = result.summary
 
             if not s:
-                row = {"pair": pair, "tf": timeframe, "trades": 0,
-                       "strategy_return": 0.0, "note": "no trades"}
+                row = {
+                    "pair": pair,
+                    "tf": timeframe,
+                    "trades": 0,
+                    "strategy_return": 0.0,
+                    "note": "no trades",
+                }
             else:
                 row = {
                     "pair": pair,
@@ -81,16 +94,19 @@ def run_oos(strategy_name: str, pairs: list[str],
                 }
             results.append(row)
 
-            status = (f"trades={row.get('trades', 0):3d}  "
-                      f"ret={row.get('strategy_return', 0):+6.2f}%  "
-                      f"dd={row.get('max_dd', 0):+6.2f}%  "
-                      f"rr={row.get('rr', 0):.2f}")
+            status = (
+                f"trades={row.get('trades', 0):3d}  "
+                f"ret={row.get('strategy_return', 0):+6.2f}%  "
+                f"dd={row.get('max_dd', 0):+6.2f}%  "
+                f"rr={row.get('rr', 0):.2f}"
+            )
             print(f"  [{i}/{len(pairs)}] {pair:10s}  {status}")
 
         except Exception as e:
             print(f"  [{i}/{len(pairs)}] {pair:10s}  ERROR: {e}")
-            results.append({"pair": pair, "tf": timeframe,
-                            "strategy_return": None, "note": str(e)})
+            results.append(
+                {"pair": pair, "tf": timeframe, "strategy_return": None, "note": str(e)}
+            )
 
     elapsed = time.time() - t0
     df_res = pd.DataFrame(results)
@@ -107,8 +123,7 @@ def run_oos(strategy_name: str, pairs: list[str],
     print("=" * 90)
     print(f"  OUT-OF-SAMPLE RESULTS — {strategy_name} ({end_date})")
     print("=" * 90)
-    print(valid.sort_values("strategy_return", ascending=False)
-              .to_string(index=False))
+    print(valid.sort_values("strategy_return", ascending=False).to_string(index=False))
     print()
     n_pos = (valid["strategy_return"] > 0).sum()
     print(f"  Positive combos:  {n_pos}/{len(valid)}")
@@ -124,16 +139,16 @@ def main():
     ap.add_argument("--pairs", default=",".join(DEFAULT_PAIRS))
     ap.add_argument("--timeframe", default="1h")
     ap.add_argument("--days", type=int, default=180)
-    ap.add_argument("--end-date", default="2026-03-31",
-                    help="YYYY-MM-DD UTC (default 2026-03-31)")
+    ap.add_argument(
+        "--end-date", default="2026-03-31", help="YYYY-MM-DD UTC (default 2026-03-31)"
+    )
     ap.add_argument("--config", default=None)
     args = ap.parse_args()
 
     pairs = [p.strip() for p in args.pairs.split(",")]
     config_path = args.config or f"config/{args.strategy}.yaml"
 
-    run_oos(args.strategy, pairs, args.timeframe,
-            args.days, args.end_date, config_path)
+    run_oos(args.strategy, pairs, args.timeframe, args.days, args.end_date, config_path)
 
 
 if __name__ == "__main__":
