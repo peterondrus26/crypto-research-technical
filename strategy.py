@@ -1,18 +1,14 @@
 """
 strategy.py — Entry and exit signal logic.
 
-Pure functions: given (state, indicators_row, price, params) return
-a decision. No side effects. Same code runs in backtest and live.
+Pure functions: given (state, indicators_row, price) return a decision.
+Reads config at CALL TIME (not import time) so grid search can
+monkey-patch parameters.
 """
 from dataclasses import dataclass
-from typing import Optional
 import pandas as pd
 
-from config import (
-    ENABLE_REGIME_FILTER, ENABLE_SHORTS,
-    RSI_LONG_MIN, RSI_LONG_MAX, RSI_SHORT_MIN, RSI_SHORT_MAX,
-    RSI_EXIT_LONG, RSI_EXIT_SHORT, MAX_BARS_IN_TRADE,
-)
+import config
 
 
 @dataclass
@@ -22,25 +18,19 @@ class Decision:
 
 
 def is_regime_allowed(row: pd.Series) -> tuple[bool, bool]:
-    """
-    Returns (allow_longs, allow_shorts) based on higher-TF filter.
-    """
-    if not ENABLE_REGIME_FILTER:
-        return True, ENABLE_SHORTS
+    """Returns (allow_longs, allow_shorts) based on higher-TF filter."""
+    if not config.ENABLE_REGIME_FILTER:
+        return True, config.ENABLE_SHORTS
 
     higher_tf_bullish = row["close"] > row["ema_trend"]
     higher_tf_bearish = row["close"] < row["ema_trend"]
 
     allow_longs  = higher_tf_bullish
-    allow_shorts = higher_tf_bearish and ENABLE_SHORTS
+    allow_shorts = higher_tf_bearish and config.ENABLE_SHORTS
     return allow_longs, allow_shorts
 
 
-def check_open_long(state: dict,
-                    row: pd.Series,
-                    allow_longs: bool,
-                    atr_expanding: bool) -> Decision:
-    """Decide whether to open a LONG right now."""
+def check_open_long(state, row, allow_longs, atr_expanding) -> Decision:
     if state["position_type"] is not None:
         return Decision("HOLD")
     if state["cooldown"] > 0:
@@ -49,21 +39,16 @@ def check_open_long(state: dict,
         return Decision("HOLD")
     if not (row["ema_f"] > row["ema_s"]):
         return Decision("HOLD")
-    if not (RSI_LONG_MIN < row["rsi"] < RSI_LONG_MAX):
+    if not (config.RSI_LONG_MIN < row["rsi"] < config.RSI_LONG_MAX):
         return Decision("HOLD")
     if not atr_expanding:
         return Decision("HOLD")
     if state["usd"] <= 1:
         return Decision("HOLD")
-
     return Decision("OPEN_LONG")
 
 
-def check_open_short(state: dict,
-                     row: pd.Series,
-                     allow_shorts: bool,
-                     atr_expanding: bool) -> Decision:
-    """Decide whether to open a SHORT right now."""
+def check_open_short(state, row, allow_shorts, atr_expanding) -> Decision:
     if state["position_type"] is not None:
         return Decision("HOLD")
     if state["cooldown"] > 0:
@@ -72,49 +57,38 @@ def check_open_short(state: dict,
         return Decision("HOLD")
     if not (row["ema_f"] < row["ema_s"]):
         return Decision("HOLD")
-    if not (RSI_SHORT_MIN < row["rsi"] < RSI_SHORT_MAX):
+    if not (config.RSI_SHORT_MIN < row["rsi"] < config.RSI_SHORT_MAX):
         return Decision("HOLD")
     if not atr_expanding:
         return Decision("HOLD")
     if state["asset"] <= state["base_asset"] * 0.1:
         return Decision("HOLD")
-
     return Decision("OPEN_SHORT")
 
 
-def check_close_long(state: dict,
-                     row: pd.Series,
-                     price: float) -> Decision:
-    """Decide whether to close an open LONG."""
+def check_close_long(state, row, price) -> Decision:
     if state["position_type"] != "LONG":
         return Decision("HOLD")
-
     if price >= state["tp"]:
         return Decision("CLOSE", "TP")
     if price <= state["sl"]:
         return Decision("CLOSE", "SL")
-    if row["rsi"] > RSI_EXIT_LONG:
+    if row["rsi"] > config.RSI_EXIT_LONG:
         return Decision("CLOSE", "RSI")
-    if state["bars_in_trade"] >= MAX_BARS_IN_TRADE:
+    if state["bars_in_trade"] >= config.MAX_BARS_IN_TRADE:
         return Decision("CLOSE", "TIME")
-
     return Decision("HOLD")
 
 
-def check_close_short(state: dict,
-                      row: pd.Series,
-                      price: float) -> Decision:
-    """Decide whether to close an open SHORT."""
+def check_close_short(state, row, price) -> Decision:
     if state["position_type"] != "SHORT":
         return Decision("HOLD")
-
     if price <= state["tp"]:
         return Decision("CLOSE", "TP")
     if price >= state["sl"]:
         return Decision("CLOSE", "SL")
-    if row["rsi"] < RSI_EXIT_SHORT:
+    if row["rsi"] < config.RSI_EXIT_SHORT:
         return Decision("CLOSE", "RSI")
-    if state["bars_in_trade"] >= MAX_BARS_IN_TRADE:
+    if state["bars_in_trade"] >= config.MAX_BARS_IN_TRADE:
         return Decision("CLOSE", "TIME")
-
     return Decision("HOLD")
