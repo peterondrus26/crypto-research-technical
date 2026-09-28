@@ -1,0 +1,44 @@
+strategy: rsi_ema
+
+# Strategy parameters (override defaults from strategies/rsi_ema.py)
+params:
+  rsi_lo: 47
+  rsi_hi: 53
+  rsi_exit_long: 68
+  rsi_exit_short: 32
+  tp_mult: 3.0
+  sl_mult: 1.4
+  max_bars: 18
+  enable_shorts: true
+  enable_regime_filter: true
+
+# Market / data settings
+market:
+  pair: SOL
+  kraken_pair: SOLUSD
+  interval: "5"
+  data_file: data/solusdt_5m_30d.csv
+
+# Risk / account
+account:
+  start_balance: 50.0
+  initial_asset_allocation: 0.40
+  trading_fee: 0.0026
+
+# Volatility gate (ATR percentile)
+volatility:
+  atr_percentile: 60
+  atr_lookback_periods: 50
+  atr_min: 0.0015
+
+# Safety limits
+safety:
+  max_daily_loss: -2.0
+  max_consecutive_losses: 5
+  daily_max_trades: 25
+
+# Adaptive engine
+adaptive:
+  enabled: false            # disabled for now; enable later if useful
+  interval_hours: 6
+  min_trades: 15

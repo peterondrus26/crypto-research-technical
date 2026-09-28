@@ -21,10 +21,8 @@ from data       import fetch_ohlcv
 from indicators import enrich, atr_percentile_threshold
 from state      import load_state, save_state, reset_daily_counters, now
 from risk       import check_safety_limits
-from strategy   import (
-    is_regime_allowed, check_open_long, check_open_short,
-    check_close_long, check_close_short,
-)
+import registry
+from config_loader import load_config, get_strategy_params
 from adaptive   import AdaptiveParameterManager
 
 
@@ -248,6 +246,11 @@ def run() -> None:
     init_perf_log()
     state = load_state()
 
+    cfg = load_config("config/rsi_ema.yaml")
+    strat_name, strat_params = get_strategy_params(cfg)
+    strategy = registry.build_strategy(strat_name, strat_params)
+    print(f"[INFO] Strategy: {strategy}")
+
     param_mgr = AdaptiveParameterManager(PERF_LOG, PARAM_LOG) \
         if ENABLE_ADAPTIVE_PARAMS else None
 
@@ -294,32 +297,38 @@ def run() -> None:
             atr_thr = atr_percentile_threshold(df["atr"], ATR_LOOKBACK_PERIODS, cur_pct)
             atr_expanding = bool(row["atr"] > atr_thr)
 
-            allow_longs, allow_shorts = is_regime_allowed(row)
-
             if state["position_type"] is not None:
                 state["bars_in_trade"] += 1
 
-            d = check_open_long(state, row, allow_longs, atr_expanding)
-            if d.action == "OPEN_LONG":
-                _open_long(state, price, float(row["atr"]), cur_tp, cur_sl,
-                           higher_tf_bullish=(row["close"] > row["ema_trend"]),
-                           atr_ratio=(row["atr"] / atr_thr))
+                       # Build strategy context
+            context = {
+                "atr_expanding": atr_expanding,
+                "atr_threshold": atr_thr,
+            }
 
-            else:
-                d = check_open_short(state, row, allow_shorts, atr_expanding)
-                if d.action == "OPEN_SHORT":
-                    _open_short(state, price, float(row["atr"]), cur_tp, cur_sl,
+            # Try entry
+            if state["position_type"] is None:
+                d = strategy.check_entry(state, row, context)
+                if d.action == "OPEN_LONG":
+                    _open_long(state, price, float(row["atr"]),
+                               strategy.params.get("tp_mult", 3.0),
+                               strategy.params.get("sl_mult", 1.4),
+                               higher_tf_bullish=(row["close"] > row["ema_trend"]),
+                               atr_ratio=(row["atr"] / atr_thr))
+                elif d.action == "OPEN_SHORT":
+                    _open_short(state, price, float(row["atr"]),
+                                strategy.params.get("tp_mult", 3.0),
+                                strategy.params.get("sl_mult", 1.4),
                                 higher_tf_bearish=(row["close"] < row["ema_trend"]),
                                 atr_ratio=(row["atr"] / atr_thr))
 
-                elif state["position_type"] == "LONG":
-                    d = check_close_long(state, row, price)
-                    if d.action == "CLOSE":
+            # Try exit
+            if state["position_type"] is not None:
+                d = strategy.check_exit(state, row, price, context)
+                if d.action == "CLOSE":
+                    if state["position_type"] == "LONG":
                         _close_long(state, price, d.reason)
-
-                elif state["position_type"] == "SHORT":
-                    d = check_close_short(state, row, price)
-                    if d.action == "CLOSE":
+                    else:
                         _close_short(state, price, d.reason)
 
             if state["cooldown"] > 0:

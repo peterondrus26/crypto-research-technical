@@ -25,6 +25,7 @@ PARAM_LOG  = f"parameters_{PAIR.lower()}_adaptive.csv"
 # DATA SOURCE
 # ============================================================
 USE_LIVE_DATA = True          # True = Kraken API, False = ohlcv_sample.csv
+DATA_FILE = "data/solusdt_5m_30d.csv"
 
 # ============================================================
 # INDICATOR SETTINGS (FIXED — not auto-tuned)
