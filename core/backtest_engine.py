@@ -4,6 +4,7 @@ core/backtest_engine.py — Run one strategy over one dataset.
 This is the low-level engine. It knows nothing about pairs, timeframes,
 or config files. Caller supplies an enriched DataFrame and a strategy.
 """
+
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -31,18 +32,18 @@ def _make_initial_state(price: float) -> dict:
     fee = usd_spend * config.TRADING_FEE
     qty = (usd_spend - fee) / price
     return {
-        "base_usd":      config.START_BALANCE - usd_spend,
-        "base_asset":    qty,
-        "usd":           config.START_BALANCE - usd_spend,
-        "asset":         qty,
-        "entry":         None,
-        "tp":            None,
-        "sl":            None,
-        "cooldown":      0,
+        "base_usd": config.START_BALANCE - usd_spend,
+        "base_asset": qty,
+        "usd": config.START_BALANCE - usd_spend,
+        "asset": qty,
+        "entry": None,
+        "tp": None,
+        "sl": None,
+        "cooldown": 0,
         "position_type": None,
         "position_size": 0.0,
         "bars_in_trade": 0,
-        "last_entry":    None,
+        "last_entry": None,
     }
 
 
@@ -97,15 +98,17 @@ def _close(state, price, reason, trades, ts, bars):
         state["usd"] -= total_cost
         state["asset"] += qty
 
-    trades.append({
-        "timestamp": ts,
-        "type": state["position_type"],
-        "pnl": pnl,
-        "exit_reason": reason,
-        "bars_held": bars,
-        "entry": entry_px,
-        "exit": price,
-    })
+    trades.append(
+        {
+            "timestamp": ts,
+            "type": state["position_type"],
+            "pnl": pnl,
+            "exit_reason": reason,
+            "bars_held": bars,
+            "entry": entry_px,
+            "exit": price,
+        }
+    )
     state["position_type"] = None
     state["entry"] = None
     state["cooldown"] = 3
@@ -136,15 +139,27 @@ def run(df: pd.DataFrame, strategy) -> BacktestResult:
 
         # ATR percentile (rolling)
         lookback = config.ATR_LOOKBACK_PERIODS
-        atr_window = df["atr"].iloc[max(0, i - lookback):i]
+        atr_window = df["atr"].iloc[max(0, i - lookback) : i]
         if len(atr_window.dropna()) >= 10:
-            atr_thr = float(atr_window.quantile(
-                config.ATR_PERCENTILE_THRESHOLD / 100.0))
+            atr_thr = float(
+                atr_window.quantile(config.ATR_PERCENTILE_THRESHOLD / 100.0)
+            )
         else:
             atr_thr = float(row["atr"])
         atr_expanding = bool(row["atr"] > atr_thr)
 
-        context = {"atr_expanding": atr_expanding, "atr_threshold": atr_thr}
+        # Rolling high for breakout entry (highest high of prior bars)
+        lookback = int(strategy.params.get("lookback", 20))
+        if i >= lookback:
+            rolling_high = float(df["high"].iloc[i - lookback : i].max())
+        else:
+            rolling_high = float(row["high"])
+
+        context = {
+            "atr_expanding": atr_expanding,
+            "atr_threshold": atr_thr,
+            "rolling_high": rolling_high,
+        }
 
         strategy.pre_bar(state, row, context)
 
@@ -154,8 +169,7 @@ def run(df: pd.DataFrame, strategy) -> BacktestResult:
             if d.action == "OPEN_LONG":
                 state["last_entry"] = price
                 if strategy.uses_runner_tp_sl:
-                    tp, sl = strategy.get_entry_levels(
-                        price, float(row["atr"]), row)
+                    tp, sl = strategy.get_entry_levels(price, float(row["atr"]), row)
                 else:
                     sl_mult = strategy.params.get("sl_atr_mult", 2.0)
                     tp, sl = None, price - float(row["atr"]) * sl_mult
@@ -163,8 +177,7 @@ def run(df: pd.DataFrame, strategy) -> BacktestResult:
             elif d.action == "OPEN_SHORT":
                 state["last_entry"] = price
                 if strategy.uses_runner_tp_sl:
-                    tp, sl = strategy.get_entry_levels(
-                        price, float(row["atr"]), row)
+                    tp, sl = strategy.get_entry_levels(price, float(row["atr"]), row)
                     tp = price - (tp - price)
                     sl = price + (price - sl)
                 else:
@@ -176,8 +189,7 @@ def run(df: pd.DataFrame, strategy) -> BacktestResult:
         if state["position_type"] is not None:
             d = strategy.check_exit(state, row, price, context)
             if d.action == "CLOSE":
-                _close(state, price, d.reason, trades, ts,
-                       state["bars_in_trade"])
+                _close(state, price, d.reason, trades, ts, state["bars_in_trade"])
 
         if state["cooldown"] > 0:
             state["cooldown"] -= 1
@@ -226,8 +238,8 @@ def summarize(result: BacktestResult) -> dict:
         "total_pnl": strategy_pnl,
         "final_equity": final_val,
         # Two return metrics side by side:
-        "total_return": total_return_pct,          # includes market drift
-        "strategy_return": strategy_return_pct,    # PnL only, honest edge
+        "total_return": total_return_pct,  # includes market drift
+        "strategy_return": strategy_return_pct,  # PnL only, honest edge
         "avg_win": avg_w,
         "avg_loss": avg_l,
         "rr_ratio": rr,
@@ -241,6 +253,7 @@ def summarize(result: BacktestResult) -> dict:
         "rsi_exits": len(t[t["exit_reason"] == "RSI"]),
         "time_exits": len(t[t["exit_reason"] == "TIME"]),
     }
+
 
 def prepare_dataframe(df_raw: pd.DataFrame) -> pd.DataFrame:
     """Enrich and clean a raw OHLCV dataframe."""

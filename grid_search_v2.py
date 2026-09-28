@@ -5,6 +5,7 @@ Usage:
     python grid_search_v2.py meanrev
     python grid_search_v2.py rsi_ema
 """
+
 import itertools
 import sys
 import time
@@ -16,22 +17,21 @@ from config_loader import load_config
 import registry
 from backtest import run_backtest, summarize
 
-
 # ---- Grid definitions per strategy --------------------------------
 GRIDS = {
     "meanrev": {
-        "z_entry":     [1.5, 2.0, 2.5, 3.0],
-        "rsi_entry":   [25, 30, 35, 40],
-        "rsi_exit":    [50, 55, 60],
-        "max_bars":    [6, 9, 12, 18],
+        "z_entry": [1.5, 2.0, 2.5, 3.0],
+        "rsi_entry": [25, 30, 35, 40],
+        "rsi_exit": [50, 55, 60],
+        "max_bars": [6, 9, 12, 18],
         "sl_atr_mult": [1.0, 1.5, 2.0, 2.5],
     },
     "rsi_ema": {
-        "rsi_lo":      [30, 35, 40, 45],
-        "rsi_hi":      [55, 60, 65],
-        "tp_mult":     [2.0, 3.0, 4.0],
-        "sl_mult":     [1.0, 1.5, 2.0],
-        "max_bars":    [12, 18],
+        "rsi_lo": [30, 35, 40, 45],
+        "rsi_hi": [55, 60, 65],
+        "tp_mult": [2.0, 3.0, 4.0],
+        "sl_mult": [1.0, 1.5, 2.0],
+        "max_bars": [12, 18],
         "enable_shorts": [True, False],
     },
 }
@@ -43,8 +43,7 @@ def combinations(param_grid: dict):
         yield dict(zip(keys, values))
 
 
-def run_grid(strategy_name: str, data_path: str,
-             config_path: str = None):
+def run_grid(strategy_name: str, data_path: str, config_path: str = None):
     if strategy_name not in GRIDS:
         print(f"[ERROR] No grid defined for strategy '{strategy_name}'.")
         print(f"        Available: {list(GRIDS.keys())}")
@@ -62,6 +61,7 @@ def run_grid(strategy_name: str, data_path: str,
 
     # Pre-enrich once
     from indicators import enrich
+
     df = enrich(df_full, config.EMA_FAST, config.EMA_SLOW, config.EMA_TREND)
     df = df.dropna(subset=["ema_trend", "rsi", "atr"]).reset_index(drop=True)
 
@@ -81,19 +81,21 @@ def run_grid(strategy_name: str, data_path: str,
                 continue
 
             row = dict(params)
-            row.update({
-                "trades":     s["total_trades"],
-                "win_rate":   round(s["win_rate"], 1),
-                "return_pct": round(s["total_return"], 2),
-                "max_dd":     round(s["max_drawdown"], 2),
-                "total_pnl":  round(s["total_pnl"], 2),
-                "avg_win":    round(s["avg_win"], 3),
-                "avg_loss":   round(s["avg_loss"], 3),
-                "rr":         round(s["rr_ratio"], 2),
-                "tp_exits":   s["tp_exits"],
-                "sl_exits":   s["sl_exits"],
-                "time_exits": s["time_exits"],
-            })
+            row.update(
+                {
+                    "trades": s["total_trades"],
+                    "win_rate": round(s["win_rate"], 1),
+                    "return_pct": round(s["total_return"], 2),
+                    "max_dd": round(s["max_drawdown"], 2),
+                    "total_pnl": round(s["total_pnl"], 2),
+                    "avg_win": round(s["avg_win"], 3),
+                    "avg_loss": round(s["avg_loss"], 3),
+                    "rr": round(s["rr_ratio"], 2),
+                    "tp_exits": s["tp_exits"],
+                    "sl_exits": s["sl_exits"],
+                    "time_exits": s["time_exits"],
+                }
+            )
             results.append(row)
         except Exception as e:
             print(f"[WARN] combo {i} failed: {e}")
@@ -102,21 +104,30 @@ def run_grid(strategy_name: str, data_path: str,
         if i % 25 == 0:
             elapsed = time.time() - t0
             eta = (elapsed / i) * (len(combos) - i)
-            print(f"  [{i:4d}/{len(combos)}] elapsed={elapsed:.0f}s  "
-                  f"eta={eta:.0f}s")
+            print(
+                f"  [{i:4d}/{len(combos)}] elapsed={elapsed:.0f}s  " f"eta={eta:.0f}s"
+            )
 
     if not results:
         print("[ERROR] No valid results.")
         return None
 
-    df_res = pd.DataFrame(results).sort_values("return_pct",
-                                               ascending=False)
+    df_res = pd.DataFrame(results).sort_values("return_pct", ascending=False)
     df_res.to_csv(f"grid_{strategy_name}.csv", index=False)
 
     # Dynamic column order
     param_cols = list(param_grid.keys())
-    metric_cols = ["trades", "win_rate", "return_pct", "max_dd",
-                   "total_pnl", "rr", "tp_exits", "sl_exits", "time_exits"]
+    metric_cols = [
+        "trades",
+        "win_rate",
+        "return_pct",
+        "max_dd",
+        "total_pnl",
+        "rr",
+        "tp_exits",
+        "sl_exits",
+        "time_exits",
+    ]
     cols = param_cols + metric_cols
 
     print("\n" + "=" * 110)
@@ -128,8 +139,7 @@ def run_grid(strategy_name: str, data_path: str,
     print("  STATISTICS")
     print("=" * 110)
     n_pos = (df_res["return_pct"] > 0).sum()
-    n_breakeven = ((df_res["return_pct"] > -1) &
-                   (df_res["return_pct"] <= 0)).sum()
+    n_breakeven = ((df_res["return_pct"] > -1) & (df_res["return_pct"] <= 0)).sum()
     print(f"  Total combos:              {len(df_res)}")
     print(f"  Positive return:           {n_pos}")
     print(f"  Breakeven (-1% to 0%):     {n_breakeven}")

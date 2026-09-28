@@ -4,13 +4,12 @@ state.py — JSON state persistence and daily counter management.
 Bug fix: reset_daily_counters() now also resets consecutive_losses,
 so a losing streak from a previous day doesn't lock the bot forever.
 """
+
 import json
 import os
 from datetime import datetime, timezone
 
-from config import (
-    STATE_FILE, START_BALANCE, INITIAL_ASSET_ALLOCATION
-)
+from config import STATE_FILE, START_BALANCE, INITIAL_ASSET_ALLOCATION
 
 
 def now() -> datetime:
@@ -68,7 +67,7 @@ def reset_daily_counters(state: dict) -> bool:
     if state.get("last_reset_date") != today:
         state["daily_trades"] = 0
         state["daily_pnl"] = 0.0
-        state["consecutive_losses"] = 0        # ← THE FIX
+        state["consecutive_losses"] = 0  # ← THE FIX
         state["last_reset_date"] = today
         state["trades_today"] = []
         return True

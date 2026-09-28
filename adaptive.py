@@ -4,15 +4,22 @@ adaptive.py — AdaptiveParameterManager.
 Adjusts TP / SL / ATR percentile based on recent trade performance.
 Changes ONE parameter at a time, within hard safety bounds.
 """
+
 import os
 from datetime import datetime, timezone
 
 import pandas as pd
 
 from config import (
-    ATR_TP, ATR_SL, ATR_PERCENTILE_THRESHOLD,
-    ATR_TP_MIN, ATR_TP_MAX, ATR_SL_MIN, ATR_SL_MAX,
-    OPTIMIZATION_INTERVAL_HOURS, MIN_TRADES_FOR_OPTIMIZATION,
+    ATR_TP,
+    ATR_SL,
+    ATR_PERCENTILE_THRESHOLD,
+    ATR_TP_MIN,
+    ATR_TP_MAX,
+    ATR_SL_MIN,
+    ATR_SL_MAX,
+    OPTIMIZATION_INTERVAL_HOURS,
+    MIN_TRADES_FOR_OPTIMIZATION,
 )
 
 
@@ -32,7 +39,9 @@ class AdaptiveParameterManager:
 
     # ---------- gating ----------
     def should_optimize(self) -> bool:
-        hours = (datetime.now(timezone.utc) - self.last_optimization).total_seconds() / 3600
+        hours = (
+            datetime.now(timezone.utc) - self.last_optimization
+        ).total_seconds() / 3600
         return hours >= OPTIMIZATION_INTERVAL_HOURS
 
     def get_recent_trades(self, n: int = 30):
@@ -51,20 +60,20 @@ class AdaptiveParameterManager:
         if trades_df is None or len(trades_df) == 0:
             return None
 
-        wins   = trades_df[trades_df["pnl"] > 0]
+        wins = trades_df[trades_df["pnl"] > 0]
         losses = trades_df[trades_df["pnl"] <= 0]
 
         m = {
             "total_trades": len(trades_df),
-            "win_rate":     len(wins) / len(trades_df) if len(trades_df) else 0,
-            "avg_win":      wins["pnl"].mean()   if len(wins)   else 0,
-            "avg_loss":     losses["pnl"].mean() if len(losses) else 0,
-            "total_pnl":    trades_df["pnl"].sum(),
-            "expectancy":   trades_df["pnl"].mean(),
-            "tp_count":     len(trades_df[trades_df["exit_reason"] == "TP"]),
-            "sl_count":     len(trades_df[trades_df["exit_reason"] == "SL"]),
-            "time_count":   len(trades_df[trades_df["exit_reason"] == "TIME"]),
-            "rsi_count":    len(trades_df[trades_df["exit_reason"] == "RSI"]),
+            "win_rate": len(wins) / len(trades_df) if len(trades_df) else 0,
+            "avg_win": wins["pnl"].mean() if len(wins) else 0,
+            "avg_loss": losses["pnl"].mean() if len(losses) else 0,
+            "total_pnl": trades_df["pnl"].sum(),
+            "expectancy": trades_df["pnl"].mean(),
+            "tp_count": len(trades_df[trades_df["exit_reason"] == "TP"]),
+            "sl_count": len(trades_df[trades_df["exit_reason"] == "SL"]),
+            "time_count": len(trades_df[trades_df["exit_reason"] == "TIME"]),
+            "rsi_count": len(trades_df[trades_df["exit_reason"] == "RSI"]),
         }
         m["rr_ratio"] = abs(m["avg_win"] / m["avg_loss"]) if m["avg_loss"] else 0
         return m
@@ -104,20 +113,26 @@ class AdaptiveParameterManager:
             new_pct = min(self.atr_percentile + 5, 75)
             if new_pct != self.atr_percentile:
                 self.atr_percentile = new_pct
-                adjustments.append(f"Raised ATR filter to {new_pct}% (negative expectancy)")
+                adjustments.append(
+                    f"Raised ATR filter to {new_pct}% (negative expectancy)"
+                )
 
         elif metrics["expectancy"] > 0.15 and metrics["total_trades"] < 10:
             new_pct = max(self.atr_percentile - 3, 55)
             if new_pct != self.atr_percentile:
                 self.atr_percentile = new_pct
-                adjustments.append(f"Lowered ATR filter to {new_pct}% (good performance, low volume)")
+                adjustments.append(
+                    f"Lowered ATR filter to {new_pct}% (good performance, low volume)"
+                )
 
         reason = " | ".join(adjustments) if adjustments else "No changes needed"
 
         with open(self.param_log, "a") as f:
-            f.write(f"{datetime.now(timezone.utc).isoformat()},"
-                    f"{self.atr_tp:.2f},{self.atr_sl:.2f},"
-                    f"{self.atr_percentile},{reason}\n")
+            f.write(
+                f"{datetime.now(timezone.utc).isoformat()},"
+                f"{self.atr_tp:.2f},{self.atr_sl:.2f},"
+                f"{self.atr_percentile},{reason}\n"
+            )
 
         self.last_optimization = datetime.now(timezone.utc)
         return reason

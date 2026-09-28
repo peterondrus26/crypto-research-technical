@@ -5,6 +5,7 @@ Pure functions: given (state, indicators_row, price) return a decision.
 Reads config at CALL TIME (not import time) so grid search can
 monkey-patch parameters.
 """
+
 from dataclasses import dataclass
 import pandas as pd
 
@@ -13,8 +14,8 @@ import config
 
 @dataclass
 class Decision:
-    action: str            # "OPEN_LONG", "OPEN_SHORT", "CLOSE", "HOLD"
-    reason: str = ""       # for CLOSE: TP / SL / RSI / TIME
+    action: str  # "OPEN_LONG", "OPEN_SHORT", "CLOSE", "HOLD"
+    reason: str = ""  # for CLOSE: TP / SL / RSI / TIME
 
 
 def is_regime_allowed(row: pd.Series) -> tuple[bool, bool]:
@@ -25,7 +26,7 @@ def is_regime_allowed(row: pd.Series) -> tuple[bool, bool]:
     higher_tf_bullish = row["close"] > row["ema_trend"]
     higher_tf_bearish = row["close"] < row["ema_trend"]
 
-    allow_longs  = higher_tf_bullish
+    allow_longs = higher_tf_bullish
     allow_shorts = higher_tf_bearish and config.ENABLE_SHORTS
     return allow_longs, allow_shorts
 

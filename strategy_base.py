@@ -6,6 +6,7 @@ check_entry() and check_exit(). Strategies receive a `context` dict
 with market indicators; they receive `state` and can mutate it via
 a returned Decision only — never directly.
 """
+
 from dataclasses import dataclass, field
 from typing import Any
 import pandas as pd
@@ -14,8 +15,9 @@ import pandas as pd
 @dataclass
 class Decision:
     """Returned by check_entry/check_exit."""
-    action: str                    # OPEN_LONG | OPEN_SHORT | CLOSE | HOLD
-    reason: str = ""               # for CLOSE: TP/SL/RSI/TIME/<custom>
+
+    action: str  # OPEN_LONG | OPEN_SHORT | CLOSE | HOLD
+    reason: str = ""  # for CLOSE: TP/SL/RSI/TIME/<custom>
     metadata: dict = field(default_factory=dict)  # optional extras
 
 
@@ -32,6 +34,7 @@ class StrategyBase:
         check_entry(state, row, context)  -> Decision
         check_exit(state, row, price, context)  -> Decision
     """
+
     name: str = "unnamed"
     description: str = ""
     default_params: dict[str, Any] = {}
@@ -56,6 +59,7 @@ class StrategyBase:
                     )
                 merged[k] = v
         self.params = merged
+
     def get_entry_levels(self, price: float, atr: float, row: pd.Series):
         """
         Return (tp, sl) levels for a new position.
@@ -65,18 +69,18 @@ class StrategyBase:
         tp_mult = self.params.get("tp_mult", 3.0)
         sl_mult = self.params.get("sl_mult", 1.4)
         return (price + atr * tp_mult, price - atr * sl_mult)
+
     # ---- to be overridden by subclasses ----
-    def check_entry(self, state: dict, row: pd.Series,
-                    context: dict) -> Decision:
+    def check_entry(self, state: dict, row: pd.Series, context: dict) -> Decision:
         raise NotImplementedError
 
-    def check_exit(self, state: dict, row: pd.Series,
-                   price: float, context: dict) -> Decision:
+    def check_exit(
+        self, state: dict, row: pd.Series, price: float, context: dict
+    ) -> Decision:
         raise NotImplementedError
 
     # ---- optional hook: called before each candle ----
-    def pre_bar(self, state: dict, row: pd.Series,
-                context: dict) -> None:
+    def pre_bar(self, state: dict, row: pd.Series, context: dict) -> None:
         """Override to run per-bar logic (e.g., trailing stops)."""
         pass
 

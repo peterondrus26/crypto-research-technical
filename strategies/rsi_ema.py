@@ -18,6 +18,7 @@ Params:
   enable_shorts              — turn shorts on/off
   enable_regime_filter       — use EMA-trend filter
 """
+
 import pandas as pd
 
 from strategy_base import StrategyBase, Decision
@@ -48,19 +49,23 @@ class RSIEMAStrategy(StrategyBase):
         allow_longs, allow_shorts = self._regime(row)
 
         # Try long
-        if (allow_longs
-                and row["ema_f"] > row["ema_s"]
-                and self.params["rsi_lo"] < row["rsi"] < self.params["rsi_hi"]
-                and context["atr_expanding"]
-                and state["usd"] > 1):
+        if (
+            allow_longs
+            and row["ema_f"] > row["ema_s"]
+            and self.params["rsi_lo"] < row["rsi"] < self.params["rsi_hi"]
+            and context["atr_expanding"]
+            and state["usd"] > 1
+        ):
             return Decision("OPEN_LONG")
 
         # Try short
-        if (allow_shorts
-                and row["ema_f"] < row["ema_s"]
-                and self.params["rsi_lo"] < row["rsi"] < self.params["rsi_hi"]
-                and context["atr_expanding"]
-                and state["asset"] > state["base_asset"] * 0.1):
+        if (
+            allow_shorts
+            and row["ema_f"] < row["ema_s"]
+            and self.params["rsi_lo"] < row["rsi"] < self.params["rsi_hi"]
+            and context["atr_expanding"]
+            and state["asset"] > state["base_asset"] * 0.1
+        ):
             return Decision("OPEN_SHORT")
 
         return Decision("HOLD")
@@ -98,5 +103,4 @@ class RSIEMAStrategy(StrategyBase):
         higher_tf_bullish = row["close"] > row["ema_trend"]
         higher_tf_bearish = row["close"] < row["ema_trend"]
 
-        return (higher_tf_bullish,
-                higher_tf_bearish and self.params["enable_shorts"])
+        return (higher_tf_bullish, higher_tf_bearish and self.params["enable_shorts"])

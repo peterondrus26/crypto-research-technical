@@ -5,6 +5,7 @@ Usage:
     python cli.py run --pair SOL/USDT --strategy meanrev --timeframe 5m
     python cli.py run --pair SOL/USDT --strategy rsi_ema --timeframe 5m --days 30
 """
+
 import argparse
 import sys
 import os
@@ -32,8 +33,9 @@ def cmd_run(args):
     print(f"[INFO] Strategy: {strategy}")
 
     # Load data
-    df_raw = load_or_fetch(args.pair, args.timeframe, args.days,
-                          force_download=args.force_download)
+    df_raw = load_or_fetch(
+        args.pair, args.timeframe, args.days, force_download=args.force_download
+    )
 
     # Prepare
     df = prepare_dataframe(df_raw)
@@ -51,19 +53,21 @@ def cmd_run(args):
     print("=" * 70)
     print(f"  RESULT — {args.strategy} on {args.pair} {args.timeframe}")
     print("=" * 70)
-    print(f"  Trades:         {s['total_trades']}  "
-          f"(L:{s['longs']} S:{s['shorts']})")
-    print(f"  Win rate:       {s['win_rate']:.1f}%  "
-          f"({s['wins']}W / {s['losses']}L)")
+    print(
+        f"  Trades:         {s['total_trades']}  " f"(L:{s['longs']} S:{s['shorts']})"
+    )
+    print(
+        f"  Win rate:       {s['win_rate']:.1f}%  " f"({s['wins']}W / {s['losses']}L)"
+    )
     print(f"  Total PnL:      ${s['total_pnl']:.2f}")
-    print(f"  Equity Return:  {s['total_return']:+.2f}%   "
-          f"(includes market drift)")
-    print(f"  Strategy Return:{s['strategy_return']:+.2f}%   "
-          f"(trading edge only)")
+    print(f"  Equity Return:  {s['total_return']:+.2f}%   " f"(includes market drift)")
+    print(f"  Strategy Return:{s['strategy_return']:+.2f}%   " f"(trading edge only)")
     print(f"  Max Drawdown:   {s['max_drawdown']:.2f}%")
     print(f"  R:R Ratio:      {s['rr_ratio']:.2f}")
-    print(f"  Exits:          TP:{s['tp_exits']}  SL:{s['sl_exits']}  "
-          f"RSI:{s['rsi_exits']}  TIME:{s['time_exits']}")
+    print(
+        f"  Exits:          TP:{s['tp_exits']}  SL:{s['sl_exits']}  "
+        f"RSI:{s['rsi_exits']}  TIME:{s['time_exits']}"
+    )
     print("=" * 70)
 
     # Optional: save trades
@@ -77,12 +81,13 @@ def build_parser():
     sub = p.add_subparsers(dest="cmd", required=True)
 
     run_p = sub.add_parser("run", help="Run a backtest")
-    run_p.add_argument("--pair", required=True,
-                      help="e.g. SOL/USDT")
-    run_p.add_argument("--strategy", required=True,
-                      help=f"One of: {registry.list_strategies()}")
-    run_p.add_argument("--timeframe", default="5m",
-                      help="1m, 5m, 15m, 1h, 4h (default 5m)")
+    run_p.add_argument("--pair", required=True, help="e.g. SOL/USDT")
+    run_p.add_argument(
+        "--strategy", required=True, help=f"One of: {registry.list_strategies()}"
+    )
+    run_p.add_argument(
+        "--timeframe", default="5m", help="1m, 5m, 15m, 1h, 4h (default 5m)"
+    )
     run_p.add_argument("--days", type=int, default=30)
     run_p.add_argument("--config", default=None)
     run_p.add_argument("--force-download", action="store_true")

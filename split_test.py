@@ -4,6 +4,7 @@ split_test.py — In-sample / out-of-sample validation.
 Splits the data in half by time, tunes on the first half,
 tests the winning combo on the second half.
 """
+
 import pandas as pd
 
 import config
@@ -13,10 +14,9 @@ from indicators import enrich
 from backtest import run_backtest, summarize
 
 
-def split_and_test(csv_path: str,
-                   strategy_name: str,
-                   params: dict,
-                   config_path: str = None):
+def split_and_test(
+    csv_path: str, strategy_name: str, params: dict, config_path: str = None
+):
     if config_path is None:
         config_path = f"config/{strategy_name}.yaml"
     load_config(config_path)
@@ -30,8 +30,12 @@ def split_and_test(csv_path: str,
     df2 = df.iloc[mid:].reset_index(drop=True)
 
     print(f"[INFO] Split at row {mid}")
-    print(f"[INFO] In-sample:  {df1['time'].iloc[0]} -> {df1['time'].iloc[-1]}  ({len(df1)} bars)")
-    print(f"[INFO] Out-sample: {df2['time'].iloc[0]} -> {df2['time'].iloc[-1]}  ({len(df2)} bars)")
+    print(
+        f"[INFO] In-sample:  {df1['time'].iloc[0]} -> {df1['time'].iloc[-1]}  ({len(df1)} bars)"
+    )
+    print(
+        f"[INFO] Out-sample: {df2['time'].iloc[0]} -> {df2['time'].iloc[-1]}  ({len(df2)} bars)"
+    )
     print(f"[INFO] Params: {params}")
     print()
 

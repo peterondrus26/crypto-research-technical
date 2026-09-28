@@ -1,0 +1,6 @@
+strategy: breakout
+params:
+  lookback: 20
+  vol_mult: 1.5
+  trail_atr: 2.0
+  max_bars: 24

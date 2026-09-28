@@ -1,6 +1,7 @@
 """
 strategies/meanrev.py — Mean reversion strategy.
 """
+
 import pandas as pd
 
 from strategy_base import StrategyBase, Decision
@@ -29,9 +30,11 @@ class MeanRevStrategy(StrategyBase):
         z = row["zscore20"]
         rsi = row["rsi"]
 
-        if (z < -self.params["z_entry"]
-                and rsi < self.params["rsi_entry"]
-                and state["usd"] > 1):
+        if (
+            z < -self.params["z_entry"]
+            and rsi < self.params["rsi_entry"]
+            and state["usd"] > 1
+        ):
             return Decision("OPEN_LONG")
 
         return Decision("HOLD")

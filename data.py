@@ -1,6 +1,7 @@
 """
 data.py — OHLCV fetching from Kraken and CSV.
 """
+
 import os
 import pandas as pd
 import requests
@@ -24,10 +25,19 @@ def fetch_ohlcv_kraken(lookback_rows: int = 250) -> pd.DataFrame | None:
         pair_key = list(data["result"].keys())[0]
         ohlc_data = data["result"][pair_key]
 
-        df = pd.DataFrame(ohlc_data, columns=[
-            "timestamp", "open", "high", "low", "close",
-            "vwap", "volume", "count"
-        ])
+        df = pd.DataFrame(
+            ohlc_data,
+            columns=[
+                "timestamp",
+                "open",
+                "high",
+                "low",
+                "close",
+                "vwap",
+                "volume",
+                "count",
+            ],
+        )
         df["time"] = pd.to_datetime(df["timestamp"], unit="s")
         for col in ["open", "high", "low", "close"]:
             df[col] = df[col].astype(float)
@@ -40,8 +50,9 @@ def fetch_ohlcv_kraken(lookback_rows: int = 250) -> pd.DataFrame | None:
         return None
 
 
-def fetch_ohlcv_csv(path: str = "ohlcv_sample.csv",
-                    lookback_rows: int = 250) -> pd.DataFrame | None:
+def fetch_ohlcv_csv(
+    path: str = "ohlcv_sample.csv", lookback_rows: int = 250
+) -> pd.DataFrame | None:
     if not os.path.exists(path):
         return None
     try:

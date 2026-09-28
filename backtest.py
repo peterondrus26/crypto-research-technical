@@ -6,6 +6,7 @@ Usage:
     python backtest.py --config config/meanrev.yaml
     python backtest.py --config my.yaml --set rsi_lo=25 --set tp_mult=2.5
 """
+
 import argparse
 import os
 from datetime import datetime, timezone
@@ -24,18 +25,18 @@ def make_initial_state(price: float) -> dict:
     buy_fee = usd_to_spend * config.TRADING_FEE
     asset_bought = (usd_to_spend - buy_fee) / price
     return {
-        "base_usd":          config.START_BALANCE - usd_to_spend,
-        "base_asset":        asset_bought,
-        "usd":               config.START_BALANCE - usd_to_spend,
-        "asset":             asset_bought,
-        "entry":             None,
-        "tp":                None,
-        "sl":                None,
-        "cooldown":          0,
-        "position_type":     None,
-        "position_size":     0.0,
-        "bars_in_trade":     0,
-        "last_entry":        None,
+        "base_usd": config.START_BALANCE - usd_to_spend,
+        "base_asset": asset_bought,
+        "usd": config.START_BALANCE - usd_to_spend,
+        "asset": asset_bought,
+        "entry": None,
+        "tp": None,
+        "sl": None,
+        "cooldown": 0,
+        "position_type": None,
+        "position_size": 0.0,
+        "bars_in_trade": 0,
+        "last_entry": None,
     }
 
 
@@ -101,11 +102,17 @@ def _close_long(state, price, reason, trades, timestamp, bars):
     state["cooldown"] = 3
     state["bars_in_trade"] = 0
 
-    trades.append({
-        "timestamp": timestamp, "type": "LONG",
-        "pnl": pnl, "exit_reason": reason, "bars_held": bars,
-        "entry": entry_px, "exit": price,
-    })
+    trades.append(
+        {
+            "timestamp": timestamp,
+            "type": "LONG",
+            "pnl": pnl,
+            "exit_reason": reason,
+            "bars_held": bars,
+            "entry": entry_px,
+            "exit": price,
+        }
+    )
 
 
 def _close_short(state, price, reason, trades, timestamp, bars):
@@ -124,11 +131,17 @@ def _close_short(state, price, reason, trades, timestamp, bars):
     state["cooldown"] = 3
     state["bars_in_trade"] = 0
 
-    trades.append({
-        "timestamp": timestamp, "type": "SHORT",
-        "pnl": pnl, "exit_reason": reason, "bars_held": bars,
-        "entry": entry_px, "exit": price,
-    })
+    trades.append(
+        {
+            "timestamp": timestamp,
+            "type": "SHORT",
+            "pnl": pnl,
+            "exit_reason": reason,
+            "bars_held": bars,
+            "entry": entry_px,
+            "exit": price,
+        }
+    )
 
 
 # ----------------------------------------------------------------------
@@ -157,10 +170,11 @@ def run_backtest(df: pd.DataFrame, strategy) -> dict:
             state["bars_in_trade"] += 1
 
         # Rolling ATR percentile
-        atr_window = df["atr"].iloc[max(0, i - config.ATR_LOOKBACK_PERIODS):i]
+        atr_window = df["atr"].iloc[max(0, i - config.ATR_LOOKBACK_PERIODS) : i]
         if len(atr_window.dropna()) >= 10:
-            atr_thr = float(atr_window.quantile(
-                config.ATR_PERCENTILE_THRESHOLD / 100.0))
+            atr_thr = float(
+                atr_window.quantile(config.ATR_PERCENTILE_THRESHOLD / 100.0)
+            )
         else:
             atr_thr = float(row["atr"])
         atr_expanding = bool(row["atr"] > atr_thr)
@@ -173,15 +187,14 @@ def run_backtest(df: pd.DataFrame, strategy) -> dict:
         # Strategy hooks
         strategy.pre_bar(state, row, context)
 
-                   # Try entry
+        # Try entry
         if state["position_type"] is None:
             d = strategy.check_entry(state, row, context)
 
             if d.action == "OPEN_LONG":
                 state["last_entry"] = price
                 if strategy.uses_runner_tp_sl:
-                    tp, sl = strategy.get_entry_levels(
-                        price, float(row["atr"]), row)
+                    tp, sl = strategy.get_entry_levels(price, float(row["atr"]), row)
                     _open_long_levels(state, price, tp, sl)
                 else:
                     # Strategy manages exits internally; provide SL safety net
@@ -192,8 +205,7 @@ def run_backtest(df: pd.DataFrame, strategy) -> dict:
             elif d.action == "OPEN_SHORT":
                 state["last_entry"] = price
                 if strategy.uses_runner_tp_sl:
-                    tp, sl = strategy.get_entry_levels(
-                        price, float(row["atr"]), row)
+                    tp, sl = strategy.get_entry_levels(price, float(row["atr"]), row)
                     # Flip for shorts: TP is below, SL is above
                     tp = price - (tp - price)
                     sl = price + (price - sl)
@@ -209,11 +221,13 @@ def run_backtest(df: pd.DataFrame, strategy) -> dict:
             d = strategy.check_exit(state, row, price, context)
             if d.action == "CLOSE":
                 if state["position_type"] == "LONG":
-                    _close_long(state, price, d.reason, trades, ts,
-                                state["bars_in_trade"])
+                    _close_long(
+                        state, price, d.reason, trades, ts, state["bars_in_trade"]
+                    )
                 else:
-                    _close_short(state, price, d.reason, trades, ts,
-                                 state["bars_in_trade"])
+                    _close_short(
+                        state, price, d.reason, trades, ts, state["bars_in_trade"]
+                    )
 
         if state["cooldown"] > 0:
             state["cooldown"] -= 1
@@ -279,8 +293,11 @@ def print_summary(s: dict, strategy_name: str = ""):
     if not s:
         print("No trades.")
         return
-    title = f"  BACKTEST RESULTS  ({strategy_name})" if strategy_name \
+    title = (
+        f"  BACKTEST RESULTS  ({strategy_name})"
+        if strategy_name
         else "  BACKTEST RESULTS"
+    )
     print()
     print("=" * 70)
     print(title)
@@ -289,8 +306,10 @@ def print_summary(s: dict, strategy_name: str = ""):
     print(f"    Longs:             {s['longs']}")
     print(f"    Shorts:            {s['shorts']}")
     print()
-    print(f"  Win Rate:            {s['win_rate']:.1f}%  "
-          f"({s['wins']}W / {s['losses']}L)")
+    print(
+        f"  Win Rate:            {s['win_rate']:.1f}%  "
+        f"({s['wins']}W / {s['losses']}L)"
+    )
     print(f"  Total PnL:           ${s['total_pnl']:.2f}")
     print(f"  Final Equity:        ${s['final_equity']:.2f}")
     print(f"  Total Return:        {s['total_return']:+.2f}%")
@@ -335,10 +354,13 @@ def parse_overrides(pairs: list[str]) -> dict:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default="config/rsi_ema.yaml")
-    ap.add_argument("--data", default=None,
-                    help="Override data file path")
-    ap.add_argument("--set", action="append", default=[],
-                    help="Override a strategy param, e.g. --set rsi_lo=25")
+    ap.add_argument("--data", default=None, help="Override data file path")
+    ap.add_argument(
+        "--set",
+        action="append",
+        default=[],
+        help="Override a strategy param, e.g. --set rsi_lo=25",
+    )
     args = ap.parse_args()
 
     # Load config
@@ -354,16 +376,16 @@ def main():
     print(f"[INFO] Strategy: {strategy}")
 
     # Data file
-    data_path = args.data or getattr(config, "DATA_FILE",
-                                     "data/solusdt_5m_30d.csv")
+    data_path = args.data or getattr(config, "DATA_FILE", "data/solusdt_5m_30d.csv")
     if not os.path.exists(data_path):
         print(f"[ERROR] Data file not found: {data_path}")
         return
 
     print(f"[INFO] Loading {data_path}...")
     df = pd.read_csv(data_path, parse_dates=["time"])
-    print(f"[INFO] {len(df)} candles, "
-          f"{df['time'].iloc[0]} -> {df['time'].iloc[-1]}")
+    print(
+        f"[INFO] {len(df)} candles, " f"{df['time'].iloc[0]} -> {df['time'].iloc[-1]}"
+    )
 
     result = run_backtest(df, strategy)
     s = summarize(result)

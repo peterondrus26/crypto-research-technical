@@ -1,9 +1,8 @@
 """
 risk.py — Safety limits and position sizing.
 """
-from config import (
-    MAX_DAILY_LOSS, MAX_CONSECUTIVE_LOSSES, DAILY_MAX_TRADES
-)
+
+from config import MAX_DAILY_LOSS, MAX_CONSECUTIVE_LOSSES, DAILY_MAX_TRADES
 
 
 def check_safety_limits(state: dict) -> tuple[bool, str]:
