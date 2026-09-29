@@ -1,5 +1,15 @@
 # Crypto Research Tool — Technical Signals
 
+![App Menu](docs/screenshots/menu.png)
+
+![App Menu](docs/screenshots/menu_2.png)
+
+![Backtest Output](docs/screenshots/backtest.png)
+
+![Backtest Output](docs/screenshots/batch.png)
+
+![Backtest Output](docs/screenshots/git-history.png)
+
 A modular Python framework for researching, backtesting, and validating
 cryptocurrency trading strategies. Built to answer one question honestly:
 **does this signal have real edge, or is it overfit to historical data?**
