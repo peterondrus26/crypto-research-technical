@@ -23,3 +23,7 @@ data/*.csv
 
 # But keep sample data if we add any later
 !data/.gitkeep
+# Research outputs
+research/batch_results/*.csv
+research/logs/
+research/*.csv
